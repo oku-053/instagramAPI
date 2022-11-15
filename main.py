@@ -122,8 +122,8 @@ def get_hashtag_media_recent(params,hashtag_id) :
     
     return InstagramApiCall(url, Params, 'GET')
 
-def writeCSV(field_name,list,file_name) :
-    with open(file_name, 'a',encoding='utf-8',newline='')as csvfile:
+def writeCSV(field_name,list,file_name,write_type) :
+    with open(file_name, write_type, encoding='utf-8', newline='')as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames = field_name)
         writer.writeheader()
         writer.writerows(list)
@@ -139,14 +139,14 @@ if __name__ == '__main__':
     # パラメータセット
     params = basic_info() 
 
+    field_name = ['id','children','like_count','media_type', 'caption','permalink','media_url']
     # ハッシュタグ情報取得
     hashtag_response_top = get_hashtag_media_top(params,hashtag_id)
     hashtag_response_recent = get_hashtag_media_recent(params,hashtag_id)
-    field_name = ['id','children','like_count','media_type', 'caption','permalink','media_url']
-    hashtag_response_recent2 = InstagramApiCallPaging(hashtag_response_recent['json_data']['paging']['next'], 'GET')
-    result_recent = hashtag_response_recent['json_data']['data']
-    print(hashtag_response_recent2['json_data']['data'])
-    writeCSV(field_name,hashtag_response_top['json_data']['data'],'result_top.csv')
-    writeCSV(field_name,result_recent,'result_recent.csv')
-    writeCSV(field_name,hashtag_response_recent2['json_data']['data'],'result_recent.csv')
-    # print(hashtag_response_recent['json_data']['paging'])
+    writeCSV(field_name,hashtag_response_top['json_data']['data'],'result_top.csv','w')
+    writeCSV(field_name,hashtag_response_recent['json_data']['data'],'result_recent.csv','w')
+    for i in range(10):
+        hashtag_response_top = InstagramApiCallPaging(hashtag_response_top['json_data']['paging']['next'], 'GET')
+        hashtag_response_recent = InstagramApiCallPaging(hashtag_response_recent['json_data']['paging']['next'], 'GET')
+        writeCSV(field_name,hashtag_response_top['json_data']['data'],'result_top.csv','a')
+        writeCSV(field_name,hashtag_response_recent['json_data']['data'],'result_recent.csv','a')
