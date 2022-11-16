@@ -145,7 +145,7 @@ if __name__ == '__main__':
     hashtag_response_recent = get_hashtag_media_recent(params,hashtag_id)
     writeCSV(field_name,hashtag_response_top['json_data']['data'],'result_top.csv','w')
     writeCSV(field_name,hashtag_response_recent['json_data']['data'],'result_recent.csv','w')
-    for i in range(10):
+    for i in range(40):
         hashtag_response_top = InstagramApiCallPaging(hashtag_response_top['json_data']['paging']['next'], 'GET')
         hashtag_response_recent = InstagramApiCallPaging(hashtag_response_recent['json_data']['paging']['next'], 'GET')
         writeCSV(field_name,hashtag_response_top['json_data']['data'],'result_top.csv','a')
