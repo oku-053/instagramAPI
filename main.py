@@ -4,6 +4,7 @@ import datetime
 from pprint import pprint
 import config
 import csv
+import re
 
 
 def basic_info():
@@ -36,6 +37,7 @@ def InstagramApiCall(url, params, request_type):
     # 出力
     return res
 
+#instagramのAPIを呼び出す
 def InstagramApiCallPaging(url,request_type):
         # リクエスト
     if request_type == 'POST' :
@@ -47,10 +49,11 @@ def InstagramApiCallPaging(url,request_type):
     # レスポンス
     res = dict()
     res["url"] = url
-    res["json_data"]              = json.loads(req.content)
+    res["json_data"] = json.loads(req.content)
     # 出力
     return res
 
+#リクエストデバッグ用
 def debugAT():
     # エンドポイントに送付するパラメータ
     Params = dict()
@@ -61,6 +64,7 @@ def debugAT():
 
     return InstagramApiCall(url, Params, 'GET')
 
+#指定したワードのハッシュタグIDを取得する
 def get_hashtag_id(hashtag_word):
     
     """
@@ -84,6 +88,7 @@ def get_hashtag_id(hashtag_word):
     # 戻り値（ハッシュタグID）
     return response['json_data']['data'][0]['id']
 
+#トップ投稿を取得
 def get_hashtag_media_top(params,hashtag_id) :
     
     """
@@ -103,6 +108,7 @@ def get_hashtag_media_top(params,hashtag_id) :
     
     return InstagramApiCall(url, Params, 'GET')
 
+#最新投稿を取得
 def get_hashtag_media_recent(params,hashtag_id) :
     
     """
@@ -122,11 +128,66 @@ def get_hashtag_media_recent(params,hashtag_id) :
     
     return InstagramApiCall(url, Params, 'GET')
 
+#CSVに書き出す
 def writeCSV(field_name,list,file_name,write_type) :
     with open(file_name, write_type, encoding='utf-8', newline='')as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames = field_name)
         writer.writeheader()
         writer.writerows(list)
+
+#ハッシュタグを抽出する
+def extract_hash_tag(caption) :
+    #pattern = r'\#(.*?)[\#|[\s]|[\r|\n|\r\n]]' 
+    pattern = r"#[^#\s]*"
+    res = re.findall(pattern, caption)
+    return res
+
+#ハッシュタグを削除する
+def remove_hash_tag(caption) :
+    pattern = r"#[^#\s]*"
+    res = re.sub(pattern, '', caption)
+    return res
+
+def execute(params, hashtag_id, select, page) :
+    if select == "top":
+        hashtag_response = get_hashtag_media_top(params,hashtag_id)
+        file_name = 'result_top.csv'
+    else:
+        hashtag_response = get_hashtag_media_recent(params,hashtag_id)
+        file_name = 'result_recent.csv'
+
+
+    field_name = ['id','like_count', 'caption', 'hash_tag','permalink']
+    writeCSV(field_name,append_list(hashtag_response),file_name,'w')
+    
+    for i in range(page):
+        if select == "top":
+            hashtag_response_next = InstagramApiCallPaging(hashtag_response['json_data']['paging']['next'], 'GET')
+        else:
+            hashtag_response_next = InstagramApiCallPaging(hashtag_response['json_data']['paging']['next'], 'GET')
+        writeCSV(field_name,append_list(hashtag_response_next),file_name,'a')   
+    return 0
+
+def append_list(hashtag_response) :
+    results = []
+    for element in hashtag_response['json_data']['data'] :
+        try:
+            like_count = element['like_count']
+        except:
+            like_count = '0'
+        try:
+            hash_tags = extract_hash_tag(element['caption'])
+            tags = ','.join(hash_tags)
+        except:
+            element['caption'] = ''
+            tags = ''
+        try:
+            permalink = element['permalink']
+        except:
+            permalink = ''
+        result = {'id':element['id'], 'like_count':like_count, 'caption':remove_hash_tag(element['caption']), 'hash_tag':tags , 'permalink':permalink}
+        results.append(result)
+    return results
 
 if __name__ == '__main__':
     
@@ -139,14 +200,5 @@ if __name__ == '__main__':
     # パラメータセット
     params = basic_info() 
 
-    field_name = ['id','children','like_count','media_type', 'caption','permalink','media_url']
-    # ハッシュタグ情報取得
-    hashtag_response_top = get_hashtag_media_top(params,hashtag_id)
-    hashtag_response_recent = get_hashtag_media_recent(params,hashtag_id)
-    writeCSV(field_name,hashtag_response_top['json_data']['data'],'result_top.csv','w')
-    writeCSV(field_name,hashtag_response_recent['json_data']['data'],'result_recent.csv','w')
-    for i in range(40):
-        hashtag_response_top = InstagramApiCallPaging(hashtag_response_top['json_data']['paging']['next'], 'GET')
-        hashtag_response_recent = InstagramApiCallPaging(hashtag_response_recent['json_data']['paging']['next'], 'GET')
-        writeCSV(field_name,hashtag_response_top['json_data']['data'],'result_top.csv','a')
-        writeCSV(field_name,hashtag_response_recent['json_data']['data'],'result_recent.csv','a')
+    execute(params, hashtag_id, "top", 2)
+    execute(params, hashtag_id, "recent", 2)
