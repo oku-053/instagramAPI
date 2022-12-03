@@ -178,11 +178,10 @@ def execute(params, hashtag_id, select, page) :
     field_name = ['id','like_count', 'caption', 'hash_tag','permalink']
     writeCSV(field_name,append_list(hashtag_response, all_tags),file_name,'w')
     
+    hashtag_response_next = InstagramApiCallPaging(hashtag_response['json_data']['paging']['next'], 'GET')
+
     for i in range(page):
-        if select == "top":
-            hashtag_response_next = InstagramApiCallPaging(hashtag_response['json_data']['paging']['next'], 'GET')
-        else:
-            hashtag_response_next = InstagramApiCallPaging(hashtag_response['json_data']['paging']['next'], 'GET')
+        hashtag_response_next = InstagramApiCallPaging(hashtag_response_next['json_data']['paging']['next'], 'GET')
         writeCSV(field_name,append_list(hashtag_response_next, all_tags),file_name,'a')  
     field_name = ['hashtag', 'count']
     writeCSV(field_name,count_hash_tag(all_tags),tags_file_name,'w')
