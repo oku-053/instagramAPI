@@ -5,6 +5,7 @@ from pprint import pprint
 import config
 import csv
 import re
+from collections import Counter
 
 
 def basic_info():
@@ -148,27 +149,46 @@ def remove_hash_tag(caption) :
     res = re.sub(pattern, '', caption)
     return res
 
+#ハッシュタグの出現回数をカウントする
+def count_hash_tag(tags) :
+    counter_tags = Counter(tags)
+    result = convert_to_list(counter_tags.most_common())
+    return result
+
+#リストに変換する
+def convert_to_list(lists) :
+    results = []
+    for target in lists:
+        result = list(target)
+        dic = {'hashtag':result[0], 'count':result[1]}
+        results.append(dic)
+    return results
+
 def execute(params, hashtag_id, select, page) :
     if select == "top":
         hashtag_response = get_hashtag_media_top(params,hashtag_id)
         file_name = 'result_top.csv'
+        tags_file_name = 'hashtag_count_top.csv'
     else:
         hashtag_response = get_hashtag_media_recent(params,hashtag_id)
         file_name = 'result_recent.csv'
+        tags_file_name = 'hashtag_count_recent.csv'
 
-
+    all_tags = []
     field_name = ['id','like_count', 'caption', 'hash_tag','permalink']
-    writeCSV(field_name,append_list(hashtag_response),file_name,'w')
+    writeCSV(field_name,append_list(hashtag_response, all_tags),file_name,'w')
     
     for i in range(page):
         if select == "top":
             hashtag_response_next = InstagramApiCallPaging(hashtag_response['json_data']['paging']['next'], 'GET')
         else:
             hashtag_response_next = InstagramApiCallPaging(hashtag_response['json_data']['paging']['next'], 'GET')
-        writeCSV(field_name,append_list(hashtag_response_next),file_name,'a')   
+        writeCSV(field_name,append_list(hashtag_response_next, all_tags),file_name,'a')  
+    field_name = ['hashtag', 'count']
+    writeCSV(field_name,count_hash_tag(all_tags),tags_file_name,'w')
     return 0
 
-def append_list(hashtag_response) :
+def append_list(hashtag_response, all_tags) :
     results = []
     for element in hashtag_response['json_data']['data'] :
         try:
@@ -187,11 +207,12 @@ def append_list(hashtag_response) :
             permalink = ''
         result = {'id':element['id'], 'like_count':like_count, 'caption':remove_hash_tag(element['caption']), 'hash_tag':tags , 'permalink':permalink}
         results.append(result)
+        all_tags.append(tags)
     return results
 
 if __name__ == '__main__':
     
-    # 【要修正】検索したいハッシュタグワードを記述
+    # 検索したいハッシュタグワードを記述
     hashtag_word = '写ルンです'
 
     # ハッシュタグIDを取得
@@ -200,5 +221,5 @@ if __name__ == '__main__':
     # パラメータセット
     params = basic_info() 
 
-    execute(params, hashtag_id, "top", 2)
-    execute(params, hashtag_id, "recent", 2)
+    execute(params, hashtag_id, "top", 10)
+    execute(params, hashtag_id, "recent", 10)
